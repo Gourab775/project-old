@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ShoppingBag, X, ChevronRight } from "lucide-react";
+import { ShoppingBag, X, ChevronRight, Minus, Plus } from "lucide-react";
 import { useCart } from "../context/CartContext";
 
 export function CartDrawer() {
