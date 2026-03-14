@@ -1,0 +1,13 @@
+packages:
+  "framer-motion": "For smooth card interactions, cart bounce animations, and page transitions"
+  "clsx": "Utility for constructing className strings conditionally"
+  "tailwind-merge": "Utility for merging tailwind classes safely"
+
+images:
+  - path: "artifacts/qr-menu/public/images/logo.png"
+    description: "A minimal, modern geometric restaurant logo icon featuring a stylized flame or leaf in warm vibrant orange and amber colors, transparent background"
+    aspect_ratio: "1:1"
+
+notes:
+  - No backend required, fully client-side mocked data.
+  - Cart state and veg-mode toggle managed via React Context.
