@@ -20,19 +20,63 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 
 ```text
 artifacts-monorepo/
-├── artifacts/              # Deployable applications
-│   └── api-server/         # Express API server
+├── artifacts/
+│   ├── api-server/         # Express API server
+│   └── qr-menu/            # Restaurant QR Menu – React + Vite SPA
+│       ├── lib/
+│       │   └── supabase.ts           # Supabase client (reads VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY)
+│       └── src/
+│           ├── components/
+│           │   ├── Header.tsx
+│           │   ├── SearchBar.tsx
+│           │   ├── CategorySlider.tsx   # Horizontally-scrollable category pills
+│           │   ├── CategoryCarousel.tsx # Re-export shim → CategorySlider
+│           │   ├── FeaturedCard.tsx
+│           │   ├── MenuItemCard.tsx
+│           │   └── CartDrawer.tsx
+│           ├── context/
+│           │   └── CartContext.tsx      # Cart state + vegMode + searchQuery
+│           ├── data/
+│           │   └── menuData.ts         # Mock/fallback data (15 items, 5 categories)
+│           ├── pages/
+│           │   ├── menu.tsx            # Main menu page (fetches via menuService)
+│           │   ├── MenuPage.tsx        # Re-export shim → menu.tsx
+│           │   ├── cart.tsx            # Full-page cart view (/cart route)
+│           │   └── not-found.tsx
+│           ├── services/
+│           │   └── menuService.ts      # Supabase fetch with mock-data fallback
+│           └── styles/
+│               └── globals.css         # Supplementary global styles
 ├── lib/                    # Shared libraries
-│   ├── api-spec/           # OpenAPI spec + Orval codegen config
-│   ├── api-client-react/   # Generated React Query hooks
-│   ├── api-zod/            # Generated Zod schemas from OpenAPI
-│   └── db/                 # Drizzle ORM schema + DB connection
-├── scripts/                # Utility scripts (single workspace package)
-│   └── src/                # Individual .ts scripts, run via `pnpm --filter @workspace/scripts run <script>`
-├── pnpm-workspace.yaml     # pnpm workspace (artifacts/*, lib/*, lib/integrations/*, scripts)
-├── tsconfig.base.json      # Shared TS options (composite, bundler resolution, es2022)
-├── tsconfig.json           # Root TS project references
-└── package.json            # Root package with hoisted devDeps
+│   ├── api-spec/
+│   ├── api-client-react/
+│   ├── api-zod/
+│   └── db/
+├── scripts/
+├── pnpm-workspace.yaml
+├── tsconfig.base.json
+├── tsconfig.json
+└── package.json
+```
+
+### Supabase integration (qr-menu)
+
+The menu SPA connects to Supabase when the following env vars are set:
+
+| Variable | Description |
+|---|---|
+| `VITE_SUPABASE_URL` | Your Supabase project URL |
+| `VITE_SUPABASE_ANON_KEY` | Your Supabase anon/public key |
+
+Without these variables the app falls back to the built-in mock data and shows a banner. Required Supabase tables:
+
+```sql
+-- menu_categories
+id text PK, name text, image_url text, sort_order int
+
+-- menu_items
+id text PK, name text, price int, description text,
+is_veg bool, is_available bool, category_id text, image_url text
 ```
 
 ## TypeScript & Composite Projects

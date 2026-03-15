@@ -1,0 +1,41 @@
+/* Restaurant QR Menu – supplementary global styles */
+
+/* Hide scrollbars for category slider while preserving scroll */
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Smooth scroll for the whole page */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Subtle bounce animation for the Add button */
+@keyframes cart-bounce {
+  0%, 100% { transform: scale(1); }
+  40%       { transform: scale(1.18); }
+  70%       { transform: scale(0.92); }
+}
+.animate-cart-bounce {
+  animation: cart-bounce 0.35s ease-in-out;
+}
+
+/* Food card image hover zoom */
+.food-img-zoom {
+  transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+.food-img-zoom:hover {
+  transform: scale(1.06);
+}
+
+/* Line-clamp utility fallback */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
