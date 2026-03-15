@@ -1,38 +1,18 @@
 import { createClient } from "@supabase/supabase-js";
 
+// Flexible row types — use Record so we can handle any column naming variation
+// from the user's Supabase schema without hard-coding column names that may differ.
 export type Database = {
   public: {
     Tables: {
       restaurants: {
-        Row: {
-          id: string;
-          name: string;
-          slug: string;
-          logo_url: string | null;
-          description: string | null;
-        };
+        Row: Record<string, unknown>;
       };
       categories: {
-        Row: {
-          id: string;
-          restaurant_id: string;
-          name: string;
-          image_url: string;
-          sort_order: number;
-        };
+        Row: Record<string, unknown>;
       };
       menu_items: {
-        Row: {
-          id: string;
-          restaurant_id: string;
-          category_id: string;
-          name: string;
-          description: string;
-          price: number;
-          image_url: string;
-          is_veg: boolean;
-          is_available: boolean;
-        };
+        Row: Record<string, unknown>;
       };
     };
   };
