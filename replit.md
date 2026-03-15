@@ -35,16 +35,19 @@ artifacts-monorepo/
 │           │   ├── MenuItemCard.tsx
 │           │   └── CartDrawer.tsx
 │           ├── context/
-│           │   └── CartContext.tsx      # Cart state + vegMode + searchQuery
+│           │   └── CartContext.tsx      # Cart + vegMode + searchQuery state
 │           ├── data/
 │           │   └── menuData.ts         # Mock/fallback data (15 items, 5 categories)
+│           ├── hooks/
+│           │   └── useMenu.ts          # React hook: loads categories + items via services
 │           ├── pages/
-│           │   ├── menu.tsx            # Main menu page (fetches via menuService)
+│           │   ├── menu.tsx            # Main menu page — uses useMenu hook
 │           │   ├── MenuPage.tsx        # Re-export shim → menu.tsx
 │           │   ├── cart.tsx            # Full-page cart view (/cart route)
 │           │   └── not-found.tsx
 │           ├── services/
-│           │   └── menuService.ts      # Supabase fetch with mock-data fallback
+│           │   ├── categoryService.ts  # getCategories() — Supabase `categories` table
+│           │   └── menuService.ts      # getMenuItems(), getMenuItemsByCategory()
 │           └── styles/
 │               └── globals.css         # Supplementary global styles
 ├── lib/                    # Shared libraries
@@ -71,13 +74,25 @@ The menu SPA connects to Supabase when the following env vars are set:
 Without these variables the app falls back to the built-in mock data and shows a banner. Required Supabase tables:
 
 ```sql
--- menu_categories
-id text PK, name text, image_url text, sort_order int
+-- restaurants
+id text PK, name text, slug text, logo_url text, description text
+
+-- categories
+id text PK, restaurant_id text FK, name text, image_url text, sort_order int
 
 -- menu_items
-id text PK, name text, price int, description text,
-is_veg bool, is_available bool, category_id text, image_url text
+id text PK, restaurant_id text FK, category_id text FK,
+name text, description text, price int,
+image_url text, is_veg bool, is_available bool
 ```
+
+### Service layer
+
+| File | Exports |
+|---|---|
+| `src/services/categoryService.ts` | `getCategories()` |
+| `src/services/menuService.ts` | `getMenuItems()`, `getMenuItemsByCategory(id)` |
+| `src/hooks/useMenu.ts` | `useMenu()` — loads both in parallel, exposes loading/error/refetch |
 
 ## TypeScript & Composite Projects
 

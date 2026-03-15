@@ -1,21 +1,21 @@
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
-
-export const isSupabaseConfigured =
-  Boolean(supabaseUrl) && Boolean(supabaseAnonKey);
-
-export const supabase = isSupabaseConfigured
-  ? createClient(supabaseUrl, supabaseAnonKey)
-  : null;
-
 export type Database = {
   public: {
     Tables: {
-      menu_categories: {
+      restaurants: {
         Row: {
           id: string;
+          name: string;
+          slug: string;
+          logo_url: string | null;
+          description: string | null;
+        };
+      };
+      categories: {
+        Row: {
+          id: string;
+          restaurant_id: string;
           name: string;
           image_url: string;
           sort_order: number;
@@ -24,15 +24,26 @@ export type Database = {
       menu_items: {
         Row: {
           id: string;
+          restaurant_id: string;
+          category_id: string;
           name: string;
-          price: number;
           description: string;
+          price: number;
+          image_url: string;
           is_veg: boolean;
           is_available: boolean;
-          category_id: string;
-          image_url: string;
         };
       };
     };
   };
 };
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+
+export const isSupabaseConfigured =
+  Boolean(supabaseUrl) && Boolean(supabaseAnonKey);
+
+export const supabase = isSupabaseConfigured
+  ? createClient<Database>(supabaseUrl, supabaseAnonKey)
+  : null;

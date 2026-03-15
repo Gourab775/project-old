@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import type { Category } from "../services/menuService";
+import type { Category } from "../services/categoryService";
 
 interface CategorySliderProps {
   categories: Category[];

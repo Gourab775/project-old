@@ -1,33 +1,37 @@
 import { supabase, isSupabaseConfigured } from "../../lib/supabase";
-import {
-  categories as mockCategories,
-  menuItems as mockMenuItems,
-  type Category,
-  type MenuItem,
-} from "../data/menuData";
+import { menuItems as mockMenuItems } from "../data/menuData";
 
-export type { Category, MenuItem };
+export type MenuItem = {
+  id: string;
+  name: string;
+  price: number;
+  description: string;
+  isVeg: boolean;
+  isAvailable: boolean;
+  categoryId: string;
+  imageUrl: string;
+};
 
-export async function getCategories(): Promise<Category[]> {
-  if (!isSupabaseConfigured || !supabase) {
-    return mockCategories;
-  }
-
-  const { data, error } = await supabase
-    .from("menu_categories")
-    .select("*")
-    .order("sort_order", { ascending: true });
-
-  if (error || !data) {
-    console.warn("Supabase error fetching categories, using mock data:", error?.message);
-    return mockCategories;
-  }
-
-  return data.map((row) => ({
+function mapRow(row: {
+  id: string;
+  name: string;
+  price: number;
+  description: string;
+  is_veg: boolean;
+  is_available: boolean;
+  category_id: string;
+  image_url: string;
+}): MenuItem {
+  return {
     id: row.id,
     name: row.name,
+    price: row.price,
+    description: row.description,
+    isVeg: row.is_veg,
+    isAvailable: row.is_available,
+    categoryId: row.category_id,
     imageUrl: row.image_url,
-  }));
+  };
 }
 
 export async function getMenuItems(): Promise<MenuItem[]> {
@@ -37,21 +41,30 @@ export async function getMenuItems(): Promise<MenuItem[]> {
 
   const { data, error } = await supabase
     .from("menu_items")
-    .select("*");
+    .select("id, name, price, description, is_veg, is_available, category_id, image_url");
 
   if (error || !data) {
-    console.warn("Supabase error fetching menu items, using mock data:", error?.message);
+    console.warn("[menuService] Supabase error, falling back to mock data:", error?.message);
     return mockMenuItems;
   }
 
-  return data.map((row) => ({
-    id: row.id,
-    name: row.name,
-    price: row.price,
-    description: row.description,
-    isVeg: row.is_veg,
-    isAvailable: row.is_available,
-    categoryId: row.category_id,
-    imageUrl: row.image_url,
-  }));
+  return data.map(mapRow);
+}
+
+export async function getMenuItemsByCategory(categoryId: string): Promise<MenuItem[]> {
+  if (!isSupabaseConfigured || !supabase) {
+    return mockMenuItems.filter((item) => item.categoryId === categoryId);
+  }
+
+  const { data, error } = await supabase
+    .from("menu_items")
+    .select("id, name, price, description, is_veg, is_available, category_id, image_url")
+    .eq("category_id", categoryId);
+
+  if (error || !data) {
+    console.warn("[menuService] Supabase error for category filter, falling back:", error?.message);
+    return mockMenuItems.filter((item) => item.categoryId === categoryId);
+  }
+
+  return data.map(mapRow);
 }

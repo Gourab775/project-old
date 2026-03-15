@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { Plus, Minus } from "lucide-react";
-import type { MenuItem } from "../data/menuData";
+import type { MenuItem } from "../services/menuService";
 import { useCart } from "../context/CartContext";
 
 export function MenuItemCard({ item }: { item: MenuItem }) {

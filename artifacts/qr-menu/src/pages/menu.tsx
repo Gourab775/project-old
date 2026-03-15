@@ -6,33 +6,27 @@ import { FeaturedCard } from "../components/FeaturedCard";
 import { MenuItemCard } from "../components/MenuItemCard";
 import { CartDrawer } from "../components/CartDrawer";
 import { useCart } from "../context/CartContext";
-import { getCategories, getMenuItems, type Category, type MenuItem } from "../services/menuService";
+import { useMenu } from "../hooks/useMenu";
 import { isSupabaseConfigured } from "../../lib/supabase";
 
 export function MenuPage() {
   const { vegMode, searchQuery } = useCart();
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { categories, menuItems, loading, error, refetch } = useMenu();
   const [activeCategory, setActiveCategory] = useState<string>("");
-
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
 
+  // Set initial active category once categories load
   useEffect(() => {
-    async function loadData() {
-      setLoading(true);
-      const [cats, items] = await Promise.all([getCategories(), getMenuItems()]);
-      setCategories(cats);
-      setMenuItems(items);
-      if (cats.length > 0) setActiveCategory(cats[0].id);
-      setLoading(false);
+    if (categories.length > 0 && !activeCategory) {
+      setActiveCategory(categories[0].id);
     }
-    loadData();
-  }, []);
+  }, [categories, activeCategory]);
 
+  // Scroll-spy: update active category as user scrolls
   useEffect(() => {
     const handleScroll = () => {
-      let currentActive = categories[0]?.id ?? "";
+      if (categories.length === 0) return;
+      let currentActive = categories[0].id;
       let minDistance = Infinity;
       const scrollY = window.scrollY + 180;
 
@@ -47,20 +41,19 @@ export function MenuPage() {
         }
       });
 
-      if (currentActive !== activeCategory) {
-        setActiveCategory(currentActive);
-      }
+      if (currentActive !== activeCategory) setActiveCategory(currentActive);
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, [activeCategory, categories]);
 
+  // Filter and group items by category
   const groupedItems = categories
     .map((category) => {
       let items = menuItems.filter((item) => item.categoryId === category.id);
       if (vegMode) items = items.filter((item) => item.isVeg);
-      if (searchQuery.trim() !== "") {
+      if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         items = items.filter(
           (item) =>
@@ -76,18 +69,19 @@ export function MenuPage() {
     <div className="min-h-screen bg-background pb-32">
       <Header />
 
+      {/* Supabase connection banner */}
       {!isSupabaseConfigured && (
         <div className="bg-amber-50 border-b border-amber-200 text-amber-800 text-xs text-center py-2 px-4">
-          Running with demo data — connect Supabase by adding{" "}
+          Running with demo data — add{" "}
           <code className="font-mono">VITE_SUPABASE_URL</code> &amp;{" "}
-          <code className="font-mono">VITE_SUPABASE_ANON_KEY</code> to your
-          environment.
+          <code className="font-mono">VITE_SUPABASE_ANON_KEY</code> to connect Supabase.
         </div>
       )}
 
       <SearchBar />
 
-      {!searchQuery && !loading && (
+      {/* Category slider + featured card hidden during search */}
+      {!searchQuery && !loading && !error && (
         <>
           <CategorySlider categories={categories} activeCategory={activeCategory} />
           <div className="mt-4">
@@ -97,24 +91,40 @@ export function MenuPage() {
       )}
 
       <main className="max-w-3xl mx-auto px-4 mt-8">
-        {loading ? (
+        {/* Loading skeletons */}
+        {loading && (
           <div className="space-y-4">
             {[1, 2, 3, 4].map((n) => (
-              <div
-                key={n}
-                className="h-32 rounded-3xl bg-muted animate-pulse"
-              />
+              <div key={n} className="h-32 rounded-3xl bg-muted animate-pulse" />
             ))}
           </div>
-        ) : groupedItems.length > 0 ? (
+        )}
+
+        {/* Error state with retry */}
+        {!loading && error && (
+          <div className="py-20 flex flex-col items-center justify-center text-center gap-4">
+            <div className="w-20 h-20 bg-destructive/10 rounded-full flex items-center justify-center">
+              <span className="text-3xl">⚠️</span>
+            </div>
+            <h3 className="text-lg font-bold text-foreground">Failed to load menu</h3>
+            <p className="text-sm text-muted-foreground max-w-xs">{error}</p>
+            <button
+              onClick={refetch}
+              className="px-6 py-2.5 bg-primary text-primary-foreground rounded-xl font-semibold hover:opacity-90 transition-opacity"
+            >
+              Try again
+            </button>
+          </div>
+        )}
+
+        {/* Menu grouped by category */}
+        {!loading && !error && groupedItems.length > 0 && (
           <div className="space-y-12">
             {groupedItems.map((group) => (
               <section
                 key={group.category.id}
                 id={`category-${group.category.id}`}
-                ref={(el) =>
-                  (sectionRefs.current[group.category.id] = el)
-                }
+                ref={(el) => (sectionRefs.current[group.category.id] = el)}
                 className="scroll-mt-40"
               >
                 <h2 className="font-display text-2xl font-bold text-foreground mb-6 flex items-center gap-3">
@@ -129,15 +139,19 @@ export function MenuPage() {
               </section>
             ))}
           </div>
-        ) : (
+        )}
+
+        {/* Empty state */}
+        {!loading && !error && groupedItems.length === 0 && (
           <div className="py-20 flex flex-col items-center justify-center text-center">
             <div className="w-24 h-24 bg-muted rounded-full flex items-center justify-center mb-4">
               <span className="text-4xl">🍽️</span>
             </div>
             <h3 className="text-xl font-bold text-foreground">No dishes found</h3>
             <p className="text-muted-foreground mt-2">
-              Try changing your search or{" "}
-              {vegMode ? "turn off Veg Mode" : "try a different category"}.
+              {vegMode
+                ? "No vegetarian items match your search. Try turning off Veg Mode."
+                : "Try a different search term."}
             </p>
           </div>
         )}

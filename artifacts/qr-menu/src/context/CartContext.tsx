@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useMemo } from 'react';
-import type { MenuItem } from '../data/menuData';
+import type { MenuItem } from '../services/menuService';
 
 export type CartItem = MenuItem & { quantity: number };
 
