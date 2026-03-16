@@ -1,5 +1,5 @@
 import { useLocation } from "wouter";
-import { ArrowLeft, CheckCircle2, MapPin, Phone, Clock } from "lucide-react";
+import { ArrowLeft, CheckCircle2, UtensilsCrossed, Phone, Hash } from "lucide-react";
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { useCart } from "../context/CartContext";
@@ -22,6 +22,7 @@ export function CheckoutPage() {
     }, 3000);
   }
 
+  /* ── Order success screen ── */
   if (placed) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-6 px-6 text-center">
@@ -42,7 +43,7 @@ export function CheckoutPage() {
             Order Placed! 🎉
           </h2>
           <p className="text-muted-foreground">
-            Your food is being prepared. Redirecting you to the menu…
+            Your food is being prepared. We'll bring it to your table shortly.
           </p>
         </motion.div>
       </div>
@@ -60,30 +61,37 @@ export function CheckoutPage() {
         >
           <ArrowLeft className="w-5 h-5 text-foreground" />
         </button>
-        <h1 className="font-bold text-xl text-foreground">Checkout</h1>
+        <h1 className="font-bold text-xl text-foreground flex-1">Checkout</h1>
+
+        {/* Dine-In badge */}
+        <span className="flex items-center gap-1.5 text-xs font-bold bg-primary/10 text-primary px-3 py-1.5 rounded-full border border-primary/20">
+          <UtensilsCrossed className="w-3 h-3" /> Dine-In
+        </span>
       </header>
 
-      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-5 pb-36">
-        {/* Delivery info card */}
+      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4 pb-36">
+        {/* Guest details card */}
         <div className="bg-card rounded-3xl border border-border/40 shadow-sm p-5 space-y-4">
           <h3 className="font-bold text-foreground text-base flex items-center gap-2">
-            <MapPin className="w-4 h-4 text-primary" /> Order Details
+            <UtensilsCrossed className="w-4 h-4 text-primary" /> Dine-In Details
           </h3>
 
           <div className="space-y-3">
+            {/* Name */}
             <div>
               <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                 Your Name
               </label>
               <input
                 type="text"
-                placeholder="Enter your name"
+                placeholder="e.g. Rahul Sharma"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="mt-1.5 w-full bg-secondary rounded-xl px-4 py-3 text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary/40 transition-all text-sm"
               />
             </div>
 
+            {/* Phone */}
             <div>
               <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1">
                 <Phone className="w-3 h-3" /> Phone Number
@@ -97,9 +105,10 @@ export function CheckoutPage() {
               />
             </div>
 
+            {/* Table */}
             <div>
               <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1">
-                <Clock className="w-3 h-3" /> Table / Seat Number (optional)
+                <Hash className="w-3 h-3" /> Table Number
               </label>
               <input
                 type="text"
@@ -121,8 +130,8 @@ export function CheckoutPage() {
             {cart.map((item) => (
               <div key={item.id} className="flex justify-between text-sm">
                 <span className="text-foreground">
-                  {item.name}{" "}
-                  <span className="text-muted-foreground">× {item.quantity}</span>
+                  {item.name}
+                  <span className="text-muted-foreground ml-1">× {item.quantity}</span>
                 </span>
                 <span className="font-semibold text-foreground">
                   ₹{item.price * item.quantity}
@@ -132,13 +141,13 @@ export function CheckoutPage() {
           </div>
         </div>
 
-        {/* Bill summary */}
+        {/* Bill summary — shows subtotal, GST, total (no delivery) */}
         <CartSummary />
 
-        {/* Payment method note */}
+        {/* Payment method */}
         <div className="bg-card rounded-3xl border border-border/40 shadow-sm p-5">
           <h3 className="font-bold text-foreground text-base mb-3">
-            Payment Method
+            Payment
           </h3>
           <div className="flex items-center gap-3 bg-primary/5 border border-primary/20 rounded-2xl px-4 py-3">
             <span className="text-2xl">💵</span>
@@ -147,14 +156,14 @@ export function CheckoutPage() {
                 Pay at Counter
               </p>
               <p className="text-xs text-muted-foreground">
-                Cash or card payment when you pick up your order
+                Cash or card payment when you're done dining
               </p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Place Order button */}
+      {/* Place Order sticky footer */}
       <div className="fixed bottom-0 inset-x-0 max-w-3xl mx-auto px-4 pb-8 pt-4 bg-background/95 backdrop-blur-xl border-t border-border/50">
         <button
           onClick={handlePlaceOrder}
@@ -164,6 +173,11 @@ export function CheckoutPage() {
           <span className="font-medium">Place Order</span>
           <span className="font-extrabold text-lg">₹{grandTotal}</span>
         </button>
+        {(!name.trim() || !phone.trim()) && (
+          <p className="text-xs text-muted-foreground text-center mt-2">
+            Please enter your name and phone number to continue
+          </p>
+        )}
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { Header } from "../components/Header";
 import { SearchBar } from "../components/SearchBar";
 import { CategorySlider } from "../components/CategorySlider";
@@ -9,46 +9,85 @@ import { useCart } from "../context/CartContext";
 import { useMenu } from "../hooks/useMenu";
 import { isSupabaseConfigured } from "../../lib/supabase";
 
+// Height of sticky header (64px) + sticky category slider (~88px) + small gap
+const SCROLL_OFFSET = 170;
+
 export function MenuPage() {
   const { vegMode, searchQuery } = useCart();
   const { categories, menuItems, loading, error, refetch } = useMenu();
   const [activeCategory, setActiveCategory] = useState<string>("");
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  // Track whether a programmatic scroll is in progress so the observer
+  // doesn't immediately override the active category we just set.
+  const isProgrammaticScroll = useRef(false);
 
-  // Set initial active category once categories load
+  // Set initial active category once data loads
   useEffect(() => {
     if (categories.length > 0 && !activeCategory) {
       setActiveCategory(categories[0].id);
     }
   }, [categories, activeCategory]);
 
-  // Scroll-spy: update active category as user scrolls
+  // IntersectionObserver scroll-spy
   useEffect(() => {
-    const handleScroll = () => {
-      if (categories.length === 0) return;
-      let currentActive = categories[0].id;
-      let minDistance = Infinity;
-      const scrollY = window.scrollY + 180;
+    if (categories.length === 0) return;
 
-      categories.forEach((category) => {
-        const el = sectionRefs.current[category.id];
-        if (el) {
-          const distance = Math.abs(el.offsetTop - scrollY);
-          if (distance < minDistance && el.offsetTop <= scrollY + 100) {
-            minDistance = distance;
-            currentActive = category.id;
+    observerRef.current?.disconnect();
+
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        if (isProgrammaticScroll.current) return;
+
+        // Pick the entry that is most visible and in the upper portion of the screen
+        let bestEntry: IntersectionObserverEntry | null = null;
+        let bestRatio = 0;
+
+        for (const entry of entries) {
+          if (entry.isIntersecting && entry.intersectionRatio > bestRatio) {
+            bestRatio = entry.intersectionRatio;
+            bestEntry = entry;
           }
         }
-      });
 
-      if (currentActive !== activeCategory) setActiveCategory(currentActive);
-    };
+        if (bestEntry) {
+          const id = bestEntry.target.getAttribute("data-category-id");
+          if (id) setActiveCategory(id);
+        }
+      },
+      {
+        // Trigger when a section enters the band between the sticky header area and
+        // 50% of the viewport height below it — this gives natural "current section" feel
+        rootMargin: `-${SCROLL_OFFSET}px 0px -45% 0px`,
+        threshold: [0, 0.1, 0.5, 1],
+      }
+    );
 
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [activeCategory, categories]);
+    for (const el of Object.values(sectionRefs.current)) {
+      if (el) observerRef.current.observe(el);
+    }
 
-  // Filter and group items by category
+    return () => observerRef.current?.disconnect();
+  }, [categories, menuItems, vegMode, searchQuery]);
+
+  // Programmatic scroll when user clicks a category pill
+  const handleCategoryClick = useCallback((id: string) => {
+    setActiveCategory(id);
+
+    const element = document.getElementById(`category-${id}`);
+    if (!element) return;
+
+    isProgrammaticScroll.current = true;
+    const y = element.getBoundingClientRect().top + window.scrollY - SCROLL_OFFSET;
+    window.scrollTo({ top: y, behavior: "smooth" });
+
+    // Re-enable observer after scroll animation completes (~700 ms)
+    setTimeout(() => {
+      isProgrammaticScroll.current = false;
+    }, 750);
+  }, []);
+
+  // Group items by category, applying veg filter and search
   const groupedItems = categories
     .map((category) => {
       let items = menuItems.filter((item) => item.categoryId === category.id);
@@ -80,11 +119,15 @@ export function MenuPage() {
 
       <SearchBar />
 
-      {/* Category slider + featured card hidden during search */}
+      {/* Category slider + featured card (hidden during search) */}
       {!searchQuery && !loading && !error && (
         <>
-          <CategorySlider categories={categories} activeCategory={activeCategory} />
-          <div className="mt-4">
+          <CategorySlider
+            categories={categories}
+            activeCategory={activeCategory}
+            onCategoryClick={handleCategoryClick}
+          />
+          <div className="mt-4 max-w-3xl mx-auto px-4">
             <FeaturedCard />
           </div>
         </>
@@ -100,13 +143,15 @@ export function MenuPage() {
           </div>
         )}
 
-        {/* Error state with retry */}
+        {/* Error state */}
         {!loading && error && (
           <div className="py-20 flex flex-col items-center justify-center text-center gap-4">
             <div className="w-20 h-20 bg-destructive/10 rounded-full flex items-center justify-center">
               <span className="text-3xl">⚠️</span>
             </div>
-            <h3 className="text-lg font-bold text-foreground">Failed to load menu</h3>
+            <h3 className="text-lg font-bold text-foreground">
+              Failed to load menu
+            </h3>
             <p className="text-sm text-muted-foreground max-w-xs">{error}</p>
             <button
               onClick={refetch}
@@ -119,20 +164,28 @@ export function MenuPage() {
 
         {/* Menu grouped by category */}
         {!loading && !error && groupedItems.length > 0 && (
-          <div className="space-y-12">
-            {groupedItems.map((group) => (
+          <div className="space-y-10">
+            {groupedItems.map(({ category, items }) => (
               <section
-                key={group.category.id}
-                id={`category-${group.category.id}`}
-                ref={(el) => (sectionRefs.current[group.category.id] = el)}
-                className="scroll-mt-40"
+                key={category.id}
+                id={`category-${category.id}`}
+                data-category-id={category.id}
+                ref={(el) => (sectionRefs.current[category.id] = el)}
+                className="scroll-mt-[170px]"
               >
-                <h2 className="font-display text-2xl font-bold text-foreground mb-6 flex items-center gap-3">
-                  {group.category.name}
-                  <div className="h-px flex-1 bg-border/60" />
-                </h2>
+                {/* Section header */}
+                <div className="flex items-center gap-3 mb-5">
+                  <h2 className="font-display text-xl font-bold text-foreground whitespace-nowrap">
+                    {category.name}
+                  </h2>
+                  <div className="h-px flex-1 bg-border/50" />
+                  <span className="text-xs text-muted-foreground font-medium shrink-0">
+                    {items.length} item{items.length !== 1 ? "s" : ""}
+                  </span>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {group.items.map((item) => (
+                  {items.map((item) => (
                     <MenuItemCard key={item.id} item={item} />
                   ))}
                 </div>
@@ -141,14 +194,16 @@ export function MenuPage() {
           </div>
         )}
 
-        {/* Empty state */}
+        {/* Empty / no results state */}
         {!loading && !error && groupedItems.length === 0 && (
           <div className="py-20 flex flex-col items-center justify-center text-center">
             <div className="w-24 h-24 bg-muted rounded-full flex items-center justify-center mb-4">
               <span className="text-4xl">🍽️</span>
             </div>
-            <h3 className="text-xl font-bold text-foreground">No dishes found</h3>
-            <p className="text-muted-foreground mt-2">
+            <h3 className="text-xl font-bold text-foreground">
+              No dishes found
+            </h3>
+            <p className="text-muted-foreground mt-2 max-w-xs">
               {vegMode
                 ? "No vegetarian items match your search. Try turning off Veg Mode."
                 : "Try a different search term."}

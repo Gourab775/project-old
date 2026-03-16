@@ -1,0 +1,134 @@
+Improve the user experience of the Dine QR Menu web app.
+
+UI/UX Changes Required:
+
+1. Category Click Scroll Offset
+
+Currently when a user clicks a category button, the list scrolls and the category appears exactly at the top.
+
+Modify this behavior so that when a category is clicked, the category section appears slightly below the top of the screen (about 70–100px offset).
+
+Reason:
+The top area contains the search bar and category slider, so the section title should not be hidden or too close to the top.
+
+Implementation idea:
+Use scrollIntoView with custom offset or calculate scroll position using getBoundingClientRect.
+
+
+2. Scroll Sync Between Menu and Category Slider
+
+Implement automatic synchronization between the menu list and the category slider.
+
+Behavior required:
+
+- When the user scrolls the menu list
+- Detect which category section is currently visible
+- Automatically highlight that category button in the category slider
+- Scroll the category slider horizontally so the active category is visible
+
+Example behavior:
+If the user scrolls down and reaches the "Biryani" section, the "Biryani" category button should automatically highlight and move into view in the top slider.
+
+Implementation suggestions:
+
+Use:
+IntersectionObserver
+
+or scroll position detection.
+
+Update activeCategory state dynamically.
+
+Files likely involved:
+- CategorySlider component
+- menu.tsx page
+- categoryService or menu hooks
+
+
+3. Remove Delivery Concept From Cart Page
+
+This is a dine-in QR menu system, not a delivery platform.
+
+Update the cart page so that:
+
+- Remove delivery address fields
+- Remove delivery charge
+- Remove delivery options
+
+Instead add:
+
+Table Number input
+Customer Name input
+
+Order Type:
+"Dine-In"
+
+Cart summary should show only:
+
+Items
+Subtotal
+Tax
+Total
+
+
+4. Improve Cart Page UI
+
+Make the cart page cleaner and more modern.
+
+Enhancements:
+
+- Card layout for cart items
+- Sticky order summary section
+- Clear quantity buttons
+- Remove clutter
+- Better spacing
+- Mobile-first design
+
+
+5. Category Slider Improvements
+
+Improve category slider usability:
+
+- Smooth horizontal scroll
+- Active category highlight
+- Scroll to active category automatically
+- Prevent category from being hidden off-screen
+
+
+6. Performance Improvements
+
+Optimize scrolling performance:
+
+- Use IntersectionObserver instead of heavy scroll listeners
+- Avoid unnecessary re-renders
+- Memoize category components if needed
+
+
+7. UI Polish
+
+Make small UI improvements:
+
+- Smooth scroll animations
+- Better hover/tap feedback
+- Slight shadow for category slider
+- Clear section headers for categories
+- Better spacing between menu sections
+
+
+8. Code Quality
+
+Refactor code if necessary:
+
+- Keep logic modular
+- Use reusable hooks if needed
+- Avoid duplicate logic
+- Maintain clean folder structure
+
+
+Goal:
+
+Create a smooth restaurant-style menu browsing experience where:
+
+- Clicking categories scrolls nicely
+- Scrolling the menu automatically updates the category slider
+- Cart page fits a dine-in QR ordering system
+- The UI feels modern and professional.

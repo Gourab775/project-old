@@ -1,65 +1,101 @@
+import { useEffect, useRef, memo } from "react";
 import { motion } from "framer-motion";
 import type { Category } from "../services/categoryService";
 
 interface CategorySliderProps {
   categories: Category[];
   activeCategory: string;
+  onCategoryClick: (id: string) => void;
 }
 
-export function CategorySlider({ categories, activeCategory }: CategorySliderProps) {
-  const scrollToCategory = (id: string) => {
-    const element = document.getElementById(`category-${id}`);
-    if (element) {
-      const y = element.getBoundingClientRect().top + window.scrollY - 80;
-      window.scrollTo({ top: y, behavior: "smooth" });
-    }
-  };
+export const CategorySlider = memo(function CategorySlider({
+  categories,
+  activeCategory,
+  onCategoryClick,
+}: CategorySliderProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const buttonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+
+  // Auto-scroll the active pill into the center of the slider
+  useEffect(() => {
+    const btn = buttonRefs.current[activeCategory];
+    const container = scrollRef.current;
+    if (!btn || !container) return;
+
+    const btnLeft = btn.offsetLeft;
+    const btnWidth = btn.offsetWidth;
+    const containerWidth = container.offsetWidth;
+    const target = btnLeft - containerWidth / 2 + btnWidth / 2;
+
+    container.scrollTo({ left: target, behavior: "smooth" });
+  }, [activeCategory]);
 
   return (
-    <div className="w-full overflow-x-auto hide-scrollbar py-2 border-b border-border/30 bg-background/50 backdrop-blur-sm sticky top-16 z-40">
-      <div className="flex gap-4 px-4 w-max max-w-3xl mx-auto">
-        {categories.map((category) => {
-          const isActive = activeCategory === category.id;
-          return (
-            <button
-              key={category.id}
-              onClick={() => scrollToCategory(category.id)}
-              className="flex flex-col items-center gap-2 group"
-            >
-              <div
-                className={`relative p-1 rounded-full transition-all duration-300 ${
-                  isActive
-                    ? "bg-primary"
-                    : "bg-transparent group-hover:bg-primary/20"
-                }`}
+    <div
+      className="w-full bg-background/80 backdrop-blur-sm sticky top-16 z-40 border-b border-border/30 shadow-sm"
+      style={{ WebkitOverflowScrolling: "touch" }}
+    >
+      <div
+        ref={scrollRef}
+        className="overflow-x-auto hide-scrollbar py-3"
+        style={{ scrollSnapType: "x proximity" }}
+      >
+        <div className="flex gap-3 px-4 w-max mx-auto">
+          {categories.map((category) => {
+            const isActive = activeCategory === category.id;
+            return (
+              <button
+                key={category.id}
+                ref={(el) => (buttonRefs.current[category.id] = el)}
+                onClick={() => onCategoryClick(category.id)}
+                className="flex flex-col items-center gap-1.5 group focus:outline-none"
+                style={{ scrollSnapAlign: "start" }}
               >
-                <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-background bg-secondary">
-                  <img
-                    src={category.imageUrl}
-                    alt={category.name}
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                  />
+                {/* Circle image */}
+                <div
+                  className={`relative p-[3px] rounded-full transition-all duration-300 ${
+                    isActive
+                      ? "bg-primary shadow-md shadow-primary/40"
+                      : "bg-transparent group-hover:bg-primary/15"
+                  }`}
+                >
+                  <div className="w-[60px] h-[60px] rounded-full overflow-hidden border-2 border-background bg-secondary">
+                    <img
+                      src={category.imageUrl}
+                      alt={category.name}
+                      loading="lazy"
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                      onError={(e) => {
+                        e.currentTarget.src =
+                          `https://ui-avatars.com/api/?name=${encodeURIComponent(category.name)}&background=f97316&color=fff&size=60`;
+                      }}
+                    />
+                  </div>
+
+                  {/* Active dot */}
+                  {isActive && (
+                    <motion.div
+                      layoutId="activeCategoryDot"
+                      className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-primary"
+                    />
+                  )}
                 </div>
-                {isActive && (
-                  <motion.div
-                    layoutId="activeCategory"
-                    className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-primary"
-                  />
-                )}
-              </div>
-              <span
-                className={`text-xs font-medium transition-colors ${
-                  isActive
-                    ? "text-primary font-bold"
-                    : "text-muted-foreground group-hover:text-foreground"
-                }`}
-              >
-                {category.name}
-              </span>
-            </button>
-          );
-        })}
+
+                {/* Label */}
+                <span
+                  className={`text-[11px] font-semibold leading-tight text-center transition-colors max-w-[64px] truncate ${
+                    isActive
+                      ? "text-primary"
+                      : "text-muted-foreground group-hover:text-foreground"
+                  }`}
+                >
+                  {category.name}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
-}
+});
