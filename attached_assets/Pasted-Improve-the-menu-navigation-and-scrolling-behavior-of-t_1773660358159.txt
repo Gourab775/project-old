@@ -1,0 +1,124 @@
+Improve the menu navigation and scrolling behavior of the Dine QR Menu app.
+
+Current problems:
+
+1. When the menu list is scrolled, the top category slider does not scroll properly to keep the active category visible.
+
+2. When a category button is clicked, the menu scrolls the section to the very top. 
+This should be adjusted so the category section appears closer to the middle of the screen instead of the very top.
+
+Important:
+The category bar is already sticky in the app. Do NOT modify or recreate the sticky category bar.
+
+Implement the following improvements:
+
+--------------------------------------------------
+
+1. Fix Category Slider Auto-Scroll
+
+When the user scrolls the menu list:
+
+• Detect which category section is currently visible.
+• Highlight that category in the category slider.
+• Automatically scroll the horizontal category slider so the active category is visible.
+
+Implementation suggestion:
+
+Use IntersectionObserver to track category sections.
+
+When a section becomes visible:
+- update activeCategory state
+- scroll the category slider horizontally to bring the active button into view using:
+
+element.scrollIntoView({
+  behavior: "smooth",
+  inline: "center",
+  block: "nearest"
+})
+
+--------------------------------------------------
+
+2. Improve Category Click Scroll Position
+
+When a category button is clicked:
+
+The category section should scroll into view but appear closer to the middle of the screen instead of the top.
+
+Implementation idea:
+
+Calculate scroll position manually:
+
+window.scrollTo({
+  top: element.offsetTop - window.innerHeight * 0.35,
+  behavior: "smooth"
+})
+
+--------------------------------------------------
+
+3. Improve Horizontal Category Scrolling
+
+Enhance the category slider:
+
+• Smooth horizontal scrolling
+• Auto scroll to active category
+• Prevent active category from being hidden outside viewport
+• Center active category when possible
+
+--------------------------------------------------
+
+4. Fix Scroll Sync Stability
+
+Ensure scroll syncing is stable and does not jitter.
+
+Use:
+
+IntersectionObserver with threshold around 0.5
+
+Avoid heavy scroll listeners.
+
+Only update active category when section is significantly visible.
+
+--------------------------------------------------
+
+5. Lazy Load Menu Images
+
+Improve performance by lazy loading food images.
+
+Use:
+
+loading="lazy"
+
+Images should fade in smoothly when loaded.
+
+--------------------------------------------------
+
+6. Mobile UX Improvements
+
+Ensure smooth mobile experience:
+
+• Improve touch scrolling
+• Add better spacing between menu sections
+• Ensure category slider works smoothly on mobile
+• Avoid layout shifts when images load
+
+--------------------------------------------------
+
+7. UI Polish
+
+Add minor UI improvements:
+
+• Active category highlight
+• Smooth transitions
+• Better section headings
+• Smooth scrolling behavior
+
+--------------------------------------------------
+
+Goal:
+
+Create a smooth restaurant-style browsing experience where:
+
+• Clicking categories scrolls smoothly
+• Scrolling the menu automatically highlights and centers the correct category
+• The category slider behaves correctly
+• The UI feels fast and polished on mobile devices.

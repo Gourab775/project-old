@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { Header } from "../components/Header";
 import { SearchBar } from "../components/SearchBar";
 import { CategorySlider } from "../components/CategorySlider";
@@ -9,17 +9,18 @@ import { useCart } from "../context/CartContext";
 import { useMenu } from "../hooks/useMenu";
 import { isSupabaseConfigured } from "../../lib/supabase";
 
-// Height of sticky header (64px) + sticky category slider (~88px) + small gap
-const SCROLL_OFFSET = 170;
-
 export function MenuPage() {
   const { vegMode, searchQuery } = useCart();
   const { categories, menuItems, loading, error, refetch } = useMenu();
   const [activeCategory, setActiveCategory] = useState<string>("");
+
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
   const observerRef = useRef<IntersectionObserver | null>(null);
-  // Track whether a programmatic scroll is in progress so the observer
-  // doesn't immediately override the active category we just set.
+  // Tracks which category sections are currently inside the observer's
+  // intersection zone; we always pick the topmost one as the "active" section.
+  const intersectingIds = useRef<Set<string>>(new Set());
+  // Guards against the observer overwriting a freshly-clicked category while
+  // the smooth-scroll animation is still running.
   const isProgrammaticScroll = useRef(false);
 
   // Set initial active category once data loads
@@ -29,48 +30,90 @@ export function MenuPage() {
     }
   }, [categories, activeCategory]);
 
-  // IntersectionObserver scroll-spy
+  // Filter + group items — memoised so the observer dependency is stable
+  const groupedItems = useMemo(
+    () =>
+      categories
+        .map((category) => {
+          let items = menuItems.filter((i) => i.categoryId === category.id);
+          if (vegMode) items = items.filter((i) => i.isVeg);
+          if (searchQuery.trim()) {
+            const q = searchQuery.toLowerCase();
+            items = items.filter(
+              (i) =>
+                i.name.toLowerCase().includes(q) ||
+                i.description.toLowerCase().includes(q)
+            );
+          }
+          return { category, items };
+        })
+        .filter((g) => g.items.length > 0),
+    [categories, menuItems, vegMode, searchQuery]
+  );
+
+  // IntersectionObserver scroll-spy — fires on entry/exit, picks topmost active
   useEffect(() => {
     if (categories.length === 0) return;
 
     observerRef.current?.disconnect();
+    intersectingIds.current.clear();
 
-    observerRef.current = new IntersectionObserver(
+    const observer = new IntersectionObserver(
       (entries) => {
         if (isProgrammaticScroll.current) return;
 
-        // Pick the entry that is most visible and in the upper portion of the screen
-        let bestEntry: IntersectionObserverEntry | null = null;
-        let bestRatio = 0;
-
+        // Maintain the set of currently-visible sections
         for (const entry of entries) {
-          if (entry.isIntersecting && entry.intersectionRatio > bestRatio) {
-            bestRatio = entry.intersectionRatio;
-            bestEntry = entry;
+          const id = entry.target.getAttribute("data-category-id");
+          if (!id) continue;
+          if (entry.isIntersecting) {
+            intersectingIds.current.add(id);
+          } else {
+            intersectingIds.current.delete(id);
           }
         }
 
-        if (bestEntry) {
-          const id = bestEntry.target.getAttribute("data-category-id");
-          if (id) setActiveCategory(id);
+        // Of all visible sections, pick the one whose top edge is closest to
+        // (and still below) the sticky header zone.
+        let topmostId: string | null = null;
+        let topmostY = Infinity;
+
+        for (const id of intersectingIds.current) {
+          const el = sectionRefs.current[id];
+          if (!el) continue;
+          const top = el.getBoundingClientRect().top;
+          if (top < topmostY) {
+            topmostY = top;
+            topmostId = id;
+          }
         }
+
+        if (topmostId) setActiveCategory(topmostId);
       },
       {
-        // Trigger when a section enters the band between the sticky header area and
-        // 50% of the viewport height below it — this gives natural "current section" feel
-        rootMargin: `-${SCROLL_OFFSET}px 0px -45% 0px`,
-        threshold: [0, 0.1, 0.5, 1],
+        // Trigger zone: strip from 120px below the viewport top (covers the
+        // sticky header + slider) down to 55% from the top.
+        // This means sections register as "active" when they occupy the upper
+        // ~45% of the usable screen area.
+        rootMargin: "-120px 0px -55% 0px",
+        threshold: 0,
       }
     );
 
+    observerRef.current = observer;
+
     for (const el of Object.values(sectionRefs.current)) {
-      if (el) observerRef.current.observe(el);
+      if (el) observer.observe(el);
     }
 
-    return () => observerRef.current?.disconnect();
-  }, [categories, menuItems, vegMode, searchQuery]);
+    return () => {
+      observer.disconnect();
+      intersectingIds.current.clear();
+    };
+  }, [categories, groupedItems.length]);
 
-  // Programmatic scroll when user clicks a category pill
+  // Category pill click → scroll the section to sit comfortably below the
+  // sticky header+slider (roughly 30% from the top of the screen).
   const handleCategoryClick = useCallback((id: string) => {
     setActiveCategory(id);
 
@@ -78,42 +121,30 @@ export function MenuPage() {
     if (!element) return;
 
     isProgrammaticScroll.current = true;
-    const y = element.getBoundingClientRect().top + window.scrollY - SCROLL_OFFSET;
-    window.scrollTo({ top: y, behavior: "smooth" });
 
-    // Re-enable observer after scroll animation completes (~700 ms)
+    const offset = Math.max(160, Math.round(window.innerHeight * 0.28));
+    const top =
+      element.getBoundingClientRect().top + window.scrollY - offset;
+
+    window.scrollTo({ top, behavior: "smooth" });
+
+    // Re-enable the observer once the smooth scroll finishes (~800 ms)
     setTimeout(() => {
       isProgrammaticScroll.current = false;
-    }, 750);
+    }, 850);
   }, []);
-
-  // Group items by category, applying veg filter and search
-  const groupedItems = categories
-    .map((category) => {
-      let items = menuItems.filter((item) => item.categoryId === category.id);
-      if (vegMode) items = items.filter((item) => item.isVeg);
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        items = items.filter(
-          (item) =>
-            item.name.toLowerCase().includes(q) ||
-            item.description.toLowerCase().includes(q)
-        );
-      }
-      return { category, items };
-    })
-    .filter((group) => group.items.length > 0);
 
   return (
     <div className="min-h-screen bg-background pb-32">
       <Header />
 
-      {/* Supabase connection banner */}
+      {/* Supabase demo-data banner */}
       {!isSupabaseConfigured && (
         <div className="bg-amber-50 border-b border-amber-200 text-amber-800 text-xs text-center py-2 px-4">
           Running with demo data — add{" "}
           <code className="font-mono">VITE_SUPABASE_URL</code> &amp;{" "}
-          <code className="font-mono">VITE_SUPABASE_ANON_KEY</code> to connect Supabase.
+          <code className="font-mono">VITE_SUPABASE_ANON_KEY</code> to connect
+          Supabase.
         </div>
       )}
 
@@ -138,7 +169,10 @@ export function MenuPage() {
         {loading && (
           <div className="space-y-4">
             {[1, 2, 3, 4].map((n) => (
-              <div key={n} className="h-32 rounded-3xl bg-muted animate-pulse" />
+              <div
+                key={n}
+                className="h-32 rounded-3xl bg-muted animate-pulse"
+              />
             ))}
           </div>
         )}
@@ -162,7 +196,7 @@ export function MenuPage() {
           </div>
         )}
 
-        {/* Menu grouped by category */}
+        {/* Menu sections */}
         {!loading && !error && groupedItems.length > 0 && (
           <div className="space-y-10">
             {groupedItems.map(({ category, items }) => (
@@ -171,7 +205,7 @@ export function MenuPage() {
                 id={`category-${category.id}`}
                 data-category-id={category.id}
                 ref={(el) => (sectionRefs.current[category.id] = el)}
-                className="scroll-mt-[170px]"
+                className="scroll-mt-[160px]"
               >
                 {/* Section header */}
                 <div className="flex items-center gap-3 mb-5">
@@ -194,7 +228,7 @@ export function MenuPage() {
           </div>
         )}
 
-        {/* Empty / no results state */}
+        {/* Empty / no-results state */}
         {!loading && !error && groupedItems.length === 0 && (
           <div className="py-20 flex flex-col items-center justify-center text-center">
             <div className="w-24 h-24 bg-muted rounded-full flex items-center justify-center mb-4">

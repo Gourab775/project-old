@@ -13,32 +13,25 @@ export const CategorySlider = memo(function CategorySlider({
   activeCategory,
   onCategoryClick,
 }: CategorySliderProps) {
-  const scrollRef = useRef<HTMLDivElement>(null);
   const buttonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
-  // Auto-scroll the active pill into the center of the slider
+  // Whenever activeCategory changes, scroll that button into the centre of the
+  // horizontal strip.  block:"nearest" ensures the PAGE does not scroll vertically.
   useEffect(() => {
     const btn = buttonRefs.current[activeCategory];
-    const container = scrollRef.current;
-    if (!btn || !container) return;
-
-    const btnLeft = btn.offsetLeft;
-    const btnWidth = btn.offsetWidth;
-    const containerWidth = container.offsetWidth;
-    const target = btnLeft - containerWidth / 2 + btnWidth / 2;
-
-    container.scrollTo({ left: target, behavior: "smooth" });
+    if (!btn) return;
+    btn.scrollIntoView({
+      behavior: "smooth",
+      inline: "center",
+      block: "nearest",
+    });
   }, [activeCategory]);
 
   return (
-    <div
-      className="w-full bg-background/80 backdrop-blur-sm sticky top-16 z-40 border-b border-border/30 shadow-sm"
-      style={{ WebkitOverflowScrolling: "touch" }}
-    >
+    <div className="w-full bg-background/80 backdrop-blur-sm sticky top-16 z-40 border-b border-border/30 shadow-sm">
       <div
-        ref={scrollRef}
         className="overflow-x-auto hide-scrollbar py-3"
-        style={{ scrollSnapType: "x proximity" }}
+        style={{ WebkitOverflowScrolling: "touch" }}
       >
         <div className="flex gap-3 px-4 w-max mx-auto">
           {categories.map((category) => {
@@ -49,7 +42,6 @@ export const CategorySlider = memo(function CategorySlider({
                 ref={(el) => (buttonRefs.current[category.id] = el)}
                 onClick={() => onCategoryClick(category.id)}
                 className="flex flex-col items-center gap-1.5 group focus:outline-none"
-                style={{ scrollSnapAlign: "start" }}
               >
                 {/* Circle image */}
                 <div
@@ -66,13 +58,14 @@ export const CategorySlider = memo(function CategorySlider({
                       loading="lazy"
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                       onError={(e) => {
-                        e.currentTarget.src =
-                          `https://ui-avatars.com/api/?name=${encodeURIComponent(category.name)}&background=f97316&color=fff&size=60`;
+                        e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                          category.name
+                        )}&background=f97316&color=fff&size=60&bold=true`;
                       }}
                     />
                   </div>
 
-                  {/* Active dot */}
+                  {/* Active dot indicator */}
                   {isActive && (
                     <motion.div
                       layoutId="activeCategoryDot"
