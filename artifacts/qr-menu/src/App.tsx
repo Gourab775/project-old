@@ -6,6 +6,7 @@ import NotFound from "@/pages/not-found";
 import { CartProvider } from "./context/CartContext";
 import { MenuPage } from "./pages/menu";
 import { CartPage } from "./pages/cart";
+import { CheckoutPage } from "./pages/checkout";
 
 const queryClient = new QueryClient();
 
@@ -14,6 +15,7 @@ function Router() {
     <Switch>
       <Route path="/" component={MenuPage} />
       <Route path="/cart" component={CartPage} />
+      <Route path="/checkout" component={CheckoutPage} />
       <Route component={NotFound} />
     </Switch>
   );
